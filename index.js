@@ -8,7 +8,7 @@ app.use(express.json({ limit: "50mb" }));
 
 const AZURE_ENDPOINT = process.env.AZURE_ENDPOINT;
 const AZURE_API_KEY = process.env.AZURE_API_KEY;
-const AZURE_MODEL = process.env.AZURE_MODEL || "DeepSeek-V4-Flash";
+const AZURE_MODEL = process.env.AZURE_MODEL || "DeepSeek-V4-Pro";
 const PORT = process.env.PORT || 8082;
 
 function convertAnthropicToOpenAI(body) {
