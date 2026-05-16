@@ -1,0 +1,13 @@
+{
+  "env": {
+    "ANTHROPIC_BASE_URL": "http://20.40.62.26:8082",
+    "ANTHROPIC_MODEL": "DeepSeek-V4-Flash",
+    "ANTHROPIC_API_KEY": "7s46KaUpf4FLyXxltlrsc4F62OchTbLDIxmRoYY2jHhDFrmL4uEBJQQJ99CCACHYHv6XJ3w3AAAAACOG9sAR"
+  },
+  "permissions": {
+    "allow": [],
+    "defaultMode": "auto"
+  },
+  "effortLevel": "high",
+  "skipDangerousModePermissionPrompt": true
+}

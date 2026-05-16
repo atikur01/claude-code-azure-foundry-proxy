@@ -1,0 +1,42 @@
+{
+  "env": {
+    "ANTHROPIC_BASE_URL": "https://opencode.ai/zen",
+    "ANTHROPIC_MODEL": "minimax-m2.5-free",
+    "ANTHROPIC_API_KEY": "sk-TqOKiVbYolvhmdQnyucO90VttROUYlFMIrbKV27py6XXmEuoi01ze5H6VtwBAvhD",
+    "ENABLE_TOOL_SEARCH": "true"
+  },
+
+  "autoUpdatesChannel": "latest"
+}
+
+
+i use this as claude code setting. 
+
+since Claude Code speaks the Anthropic Messages API format. ineed a proxy/gateway in the middle.
+
+use ,
+
+curl -X POST "https://chart-ai-app-resource.services.ai.azure.com/openai/v1/chat/completions" \
+-H "Content-Type: application/json" \
+-H "Authorization: Bearer $AZURE_API_KEY" \
+-d '{
+    "messages": [
+        {
+            "role": "user",
+            "content": "I am going to Paris, what should I see?"
+        },
+        {
+            "role": "assistant",
+            "content": "Paris, the capital of France, is known for its stunning architecture, art museums, historical landmarks, and romantic atmosphere. Here are some of the top attractions to see in Paris:\n\n1. The Eiffel Tower: The iconic Eiffel Tower is one of the most recognizable landmarks in the world and offers breathtaking views of the city.\n2. The Louvre Museum: The Louvre is one of the largest and most famous museums, housing an impressive collection of art and artifacts, including the Mona Lisa.\n3. Notre-Dame Cathedral: This beautiful cathedral is one of the most famous landmarks in Paris and is known for its Gothic architecture and stunning stained glass windows.\n\nThese are just a few of the many attractions that Paris has to offer. With so much to see and do, it is no wonder that Paris is one of the most popular tourist destinations in the world."
+        },
+        {
+            "role": "user",
+            "content": "What is so great about #1?"
+        }
+    ],
+    "model": "gpt-5.4",
+    "max_completion_tokens": 4096,
+    "reasoning_effort": "medium"
+}'
+
+this to  make the proxy in node js. so i can use local host as antropic base url
