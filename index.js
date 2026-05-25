@@ -1810,16 +1810,20 @@ app.get("/health", (req, res) => {
   res.json({ status: "ok" });
 });
 
-app.listen(PORT, () => {
-  console.log(`\n╔══════════════════════════════════════════════════╗`);
-  console.log(`║    Anthropic → Azure OpenAI Proxy                ║`);
-  console.log(`╠══════════════════════════════════════════════════╣`);
-  console.log(`║  Listening:  http://localhost:${PORT}              ║`);
-  console.log(`║  Endpoint:   ${AZURE_ENDPOINT.substring(0, 38)}...║`);
-  console.log(`║  Model:      ${AZURE_MODEL.padEnd(36)}║`);
-  console.log(`║  API Key:    ${AZURE_API_KEY ? "✓ configured" : "✗ missing (set AZURE_API_KEY)".padEnd(36)}║`);
-  console.log(`╚══════════════════════════════════════════════════╝`);
-  console.log(`\nSet in Claude Code:`);
-  console.log(`  ANTHROPIC_BASE_URL=http://localhost:${PORT}`);
-  console.log(``);
-});
+if (!process.env.VERCEL) {
+  app.listen(PORT, () => {
+    console.log(`\n╔══════════════════════════════════════════════════╗`);
+    console.log(`║    Anthropic → Azure OpenAI Proxy                ║`);
+    console.log(`╠══════════════════════════════════════════════════╣`);
+    console.log(`║  Listening:  http://localhost:${PORT}              ║`);
+    console.log(`║  Endpoint:   ${(AZURE_ENDPOINT || "").substring(0, 38)}...║`);
+    console.log(`║  Model:      ${AZURE_MODEL.padEnd(36)}║`);
+    console.log(`║  API Key:    ${AZURE_API_KEY ? "✓ configured" : "✗ missing (set AZURE_API_KEY)".padEnd(36)}║`);
+    console.log(`╚══════════════════════════════════════════════════╝`);
+    console.log(`\nSet in Claude Code:`);
+    console.log(`  ANTHROPIC_BASE_URL=http://localhost:${PORT}`);
+    console.log(``);
+  });
+}
+
+module.exports = app;
