@@ -678,7 +678,65 @@ app.get(["/models", "/v1/models"], (req, res) => {
         "display_name": "Claude Opus 4.7",
         "created_at": "2026-04-14T00:00:00Z",
         "max_input_tokens": 1000000,
-        "max_tokens": 128000
+        "max_tokens": 128000,
+        "capabilities": {
+          "batch": {
+            "supported": true
+          },
+          "citations": {
+            "supported": true
+          },
+          "code_execution": {
+            "supported": true
+          },
+          "context_management": {
+            "supported": true,
+            "clear_tool_uses_20250919": {
+              "supported": true
+            },
+            "clear_thinking_20251015": {
+              "supported": true
+            },
+            "compact_20260112": {
+              "supported": true
+            }
+          },
+          "effort": {
+            "supported": true,
+            "low": {
+              "supported": true
+            },
+            "medium": {
+              "supported": true
+            },
+            "high": {
+              "supported": true
+            },
+            "max": {
+              "supported": true
+            }
+          },
+          "image_input": {
+            "supported": true
+          },
+          "pdf_input": {
+            "supported": true
+          },
+          "structured_outputs": {
+            "supported": true
+          },
+          "thinking": {
+            "supported": true,
+            "types": {
+              "enabled": {
+                "supported": false
+              },
+              "adaptive": {
+                "supported": true
+              }
+            }
+          }
+        }
       },
       {
         "type": "model",
