@@ -504,6 +504,15 @@ async function handleStreaming(res, openaiBody, requestModel, apiKey) {
             const tcIndex = tc.index ?? 0;
 
             if (!toolCallBlocks[tcIndex]) {
+              for (const existingIdx of Object.keys(toolCallBlocks)) {
+                if (toolCallBlocks[existingIdx].closed === false) {
+                  sendSSE(res, "content_block_stop", {
+                    type: "content_block_stop",
+                    index: toolCallBlocks[existingIdx].contentIndex,
+                  });
+                  toolCallBlocks[existingIdx].closed = true;
+                }
+              }
               if (hasThinkingBlock) {
                 sendSSE(res, "content_block_stop", {
                   type: "content_block_stop",
@@ -526,6 +535,7 @@ async function handleStreaming(res, openaiBody, requestModel, apiKey) {
                 id: toolId,
                 name: tc.function?.name || "",
                 arguments: "",
+                closed: false,
               };
               sendSSE(res, "content_block_start", {
                 type: "content_block_start",
@@ -574,10 +584,13 @@ async function handleStreaming(res, openaiBody, requestModel, apiKey) {
     }
 
     for (const tcIndex of Object.keys(toolCallBlocks)) {
-      sendSSE(res, "content_block_stop", {
-        type: "content_block_stop",
-        index: toolCallBlocks[tcIndex].contentIndex,
-      });
+      if (toolCallBlocks[tcIndex].closed === false) {
+        sendSSE(res, "content_block_stop", {
+          type: "content_block_stop",
+          index: toolCallBlocks[tcIndex].contentIndex,
+        });
+        toolCallBlocks[tcIndex].closed = true;
+      }
     }
 
     if (currentContentIndex === -1) {
