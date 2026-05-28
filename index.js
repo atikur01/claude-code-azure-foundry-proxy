@@ -279,7 +279,7 @@ function convertOpenAIToAnthropic(openaiResponse, requestModel) {
     content.push({
       type: "thinking",
       thinking: msg.reasoning_content,
-      signature: null
+      signature: "mock_sig_" + randomUUID().replace(/-/g, "")
     });
   }
 
@@ -476,6 +476,14 @@ async function handleStreaming(res, openaiBody, requestModel, apiKey) {
 
         if (delta.content) {
           if (hasThinkingBlock) {
+            sendSSE(res, "content_block_delta", {
+              type: "content_block_delta",
+              index: currentContentIndex,
+              delta: {
+                type: "signature_delta",
+                signature: "mock_sig_" + randomUUID().replace(/-/g, "")
+              }
+            });
             sendSSE(res, "content_block_stop", {
               type: "content_block_stop",
               index: currentContentIndex,
@@ -514,6 +522,14 @@ async function handleStreaming(res, openaiBody, requestModel, apiKey) {
                 }
               }
               if (hasThinkingBlock) {
+                sendSSE(res, "content_block_delta", {
+                  type: "content_block_delta",
+                  index: currentContentIndex,
+                  delta: {
+                    type: "signature_delta",
+                    signature: "mock_sig_" + randomUUID().replace(/-/g, "")
+                  }
+                });
                 sendSSE(res, "content_block_stop", {
                   type: "content_block_stop",
                   index: currentContentIndex,
@@ -570,6 +586,14 @@ async function handleStreaming(res, openaiBody, requestModel, apiKey) {
     }
 
     if (hasThinkingBlock) {
+      sendSSE(res, "content_block_delta", {
+        type: "content_block_delta",
+        index: currentContentIndex,
+        delta: {
+          type: "signature_delta",
+          signature: "mock_sig_" + randomUUID().replace(/-/g, "")
+        }
+      });
       sendSSE(res, "content_block_stop", {
         type: "content_block_stop",
         index: currentContentIndex,
@@ -627,7 +651,7 @@ async function handleStreaming(res, openaiBody, requestModel, apiKey) {
         output_tokens: usageData?.completion_tokens || 0
       }
     };
-    if (fullThinking) finalResponse.content.push({ type: "thinking", thinking: fullThinking, signature: null });
+    if (fullThinking) finalResponse.content.push({ type: "thinking", thinking: fullThinking, signature: "mock_sig_" + randomUUID().replace(/-/g, "") });
     if (fullText) finalResponse.content.push({ type: "text", text: fullText });
     for (const tc of Object.values(toolCallBlocks)) {
       let input = {};
