@@ -42,7 +42,7 @@ function sanitizeForLog(obj) {
   }));
 }
 
-function convertAnthropicToOpenAI(body) {
+async function convertAnthropicToOpenAI(body) {
   const messages = [];
 
   if (body.system) {
@@ -75,7 +75,10 @@ function convertAnthropicToOpenAI(body) {
             textParts.push(block.text);
             contentParts.push({ type: "text", text: block.text });
           } else if (block.type === "thinking") {
-            continue;
+            if (block.thinking) {
+              textParts.push(`<thinking>\n${block.thinking}\n</thinking>`);
+              contentParts.push({ type: "text", text: `<thinking>\n${block.thinking}\n</thinking>` });
+            }
           } else if (block.type === "tool_use") {
             toolCalls.push({
               id: block.id,
@@ -184,20 +187,29 @@ function convertAnthropicToOpenAI(body) {
     stream: !!body.stream,
   };
 
+  const maxTokens = body.max_tokens !== undefined ? body.max_tokens : 4096;
+
   if (isDeepSeek) {
-    openaiBody.max_tokens = 16384;
+    openaiBody.max_tokens = maxTokens;
     openaiBody.temperature = body.temperature !== undefined ? body.temperature : 0.8;
     openaiBody.top_p = body.top_p !== undefined ? body.top_p : 0.1;
     openaiBody.presence_penalty = 0;
     openaiBody.frequency_penalty = 0;
-    openaiBody.reasoning_effort = "high";
+    openaiBody.reasoning_effort = (body.thinking && body.thinking.type === "disabled") ? "low" : "high";
   } else {
-    openaiBody.max_completion_tokens = 16383;
+    openaiBody.max_completion_tokens = maxTokens;
     if (body.temperature !== undefined) {
       openaiBody.temperature = body.temperature;
     }
     if (body.top_p !== undefined) {
       openaiBody.top_p = body.top_p;
+    }
+    if (body.thinking) {
+      if (body.thinking.type === "disabled") {
+        openaiBody.reasoning_effort = "low";
+      } else if (body.thinking.type === "enabled") {
+        openaiBody.reasoning_effort = "high";
+      }
     }
   }
 
@@ -262,6 +274,14 @@ function convertOpenAIToAnthropic(openaiResponse, requestModel) {
 
   const content = [];
   const msg = choice.message;
+
+  if (msg.reasoning_content) {
+    content.push({
+      type: "thinking",
+      thinking: msg.reasoning_content,
+      signature: null
+    });
+  }
 
   if (msg.content) {
     content.push({ type: "text", text: msg.content });
@@ -344,10 +364,12 @@ async function handleStreaming(res, openaiBody, requestModel, apiKey) {
 
   let currentContentIndex = -1;
   let hasTextBlock = false;
+  let hasThinkingBlock = false;
   let toolCallBlocks = {};
   let finishReason = null;
   let usageData = null;
   let fullText = "";
+  let fullThinking = "";
   let isDisconnected = false;
 
   res.on("close", () => { isDisconnected = true; });
@@ -434,7 +456,32 @@ async function handleStreaming(res, openaiBody, requestModel, apiKey) {
 
         if (!delta) continue;
 
+        if (delta.reasoning_content) {
+          fullThinking += delta.reasoning_content;
+          if (!hasThinkingBlock) {
+            currentContentIndex++;
+            hasThinkingBlock = true;
+            sendSSE(res, "content_block_start", {
+              type: "content_block_start",
+              index: currentContentIndex,
+              content_block: { type: "thinking", thinking: "" },
+            });
+          }
+          sendSSE(res, "content_block_delta", {
+            type: "content_block_delta",
+            index: currentContentIndex,
+            delta: { type: "thinking_delta", thinking: delta.reasoning_content },
+          });
+        }
+
         if (delta.content) {
+          if (hasThinkingBlock) {
+            sendSSE(res, "content_block_stop", {
+              type: "content_block_stop",
+              index: currentContentIndex,
+            });
+            hasThinkingBlock = false;
+          }
           fullText += delta.content;
           if (!hasTextBlock) {
             currentContentIndex++;
@@ -457,6 +504,13 @@ async function handleStreaming(res, openaiBody, requestModel, apiKey) {
             const tcIndex = tc.index ?? 0;
 
             if (!toolCallBlocks[tcIndex]) {
+              if (hasThinkingBlock) {
+                sendSSE(res, "content_block_stop", {
+                  type: "content_block_stop",
+                  index: currentContentIndex,
+                });
+                hasThinkingBlock = false;
+              }
               if (hasTextBlock) {
                 sendSSE(res, "content_block_stop", {
                   type: "content_block_stop",
@@ -503,6 +557,13 @@ async function handleStreaming(res, openaiBody, requestModel, apiKey) {
           }
         }
       }
+    }
+
+    if (hasThinkingBlock) {
+      sendSSE(res, "content_block_stop", {
+        type: "content_block_stop",
+        index: currentContentIndex,
+      });
     }
 
     if (hasTextBlock) {
@@ -553,6 +614,7 @@ async function handleStreaming(res, openaiBody, requestModel, apiKey) {
         output_tokens: usageData?.completion_tokens || 0
       }
     };
+    if (fullThinking) finalResponse.content.push({ type: "thinking", thinking: fullThinking, signature: null });
     if (fullText) finalResponse.content.push({ type: "text", text: fullText });
     for (const tc of Object.values(toolCallBlocks)) {
       let input = {};
@@ -612,7 +674,7 @@ app.post("/v1/messages", async (req, res) => {
     });
   }
 
-  const openaiBody = convertAnthropicToOpenAI(anthropicBody);
+  const openaiBody = await convertAnthropicToOpenAI(anthropicBody);
   addLog("info", "Converted OpenAI Body", openaiBody);
 
   if (anthropicBody.stream) {
@@ -875,8 +937,8 @@ app.get(["/models", "/v1/models"], (req, res) => {
         "id": "claude-opus-4-5-20251101",
         "display_name": "Claude Opus 4.5",
         "created_at": "2025-11-24T00:00:00Z",
-        "max_input_tokens": 200000,
-        "max_tokens": 64000,
+        "max_input_tokens": 1000000,
+        "max_tokens": 128000,
         "capabilities": {
           "batch": {
             "supported": true
@@ -941,8 +1003,8 @@ app.get(["/models", "/v1/models"], (req, res) => {
         "id": "claude-haiku-4-5-20251001",
         "display_name": "Claude Haiku 4.5",
         "created_at": "2025-10-15T00:00:00Z",
-        "max_input_tokens": 200000,
-        "max_tokens": 64000,
+        "max_input_tokens": 1000000,
+        "max_tokens": 128000,
         "capabilities": {
           "batch": {
             "supported": true
@@ -1008,7 +1070,7 @@ app.get(["/models", "/v1/models"], (req, res) => {
         "display_name": "Claude Sonnet 4.5",
         "created_at": "2025-09-29T00:00:00Z",
         "max_input_tokens": 1000000,
-        "max_tokens": 64000,
+        "max_tokens": 128000,
         "capabilities": {
           "batch": {
             "supported": true
@@ -1073,8 +1135,8 @@ app.get(["/models", "/v1/models"], (req, res) => {
         "id": "claude-opus-4-1-20250805",
         "display_name": "Claude Opus 4.1",
         "created_at": "2025-08-05T00:00:00Z",
-        "max_input_tokens": 200000,
-        "max_tokens": 32000,
+        "max_input_tokens": 1000000,
+        "max_tokens": 128000,
         "capabilities": {
           "batch": {
             "supported": true
@@ -1139,8 +1201,8 @@ app.get(["/models", "/v1/models"], (req, res) => {
         "id": "claude-opus-4-20250514",
         "display_name": "Claude Opus 4",
         "created_at": "2025-05-22T00:00:00Z",
-        "max_input_tokens": 200000,
-        "max_tokens": 32000,
+        "max_input_tokens": 1000000,
+        "max_tokens": 128000,
         "capabilities": {
           "batch": {
             "supported": true
@@ -1206,7 +1268,7 @@ app.get(["/models", "/v1/models"], (req, res) => {
         "display_name": "Claude Sonnet 4",
         "created_at": "2025-05-22T00:00:00Z",
         "max_input_tokens": 1000000,
-        "max_tokens": 64000,
+        "max_tokens": 128000,
         "capabilities": {
           "batch": {
             "supported": true
