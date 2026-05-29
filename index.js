@@ -1736,10 +1736,6 @@ app.get("/", (req, res) => {
 
         <div class="config-grid">
           <div class="config-item">
-            <div class="label">Target Endpoint</div>
-            <div class="value" title="${AZURE_ENDPOINT}">${AZURE_ENDPOINT}</div>
-          </div>
-          <div class="config-item">
             <div class="label">Active Model</div>
             <div class="model-switch-group">
               <button class="model-btn" id="pro-btn" data-model="DeepSeek-V4-Pro">Pro</button>
